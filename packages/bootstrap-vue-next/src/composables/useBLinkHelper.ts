@@ -8,10 +8,10 @@ import {
   toRef,
   toValue,
 } from 'vue'
-import {isLink} from '../utils/isLink'
-import {pick} from '../utils/object'
-import type {RouteLocationRaw, RouterLink} from 'vue-router'
-import {toPascalCase} from '../utils/stringUtils'
+import type { RouteLocationRaw, RouterLink } from 'vue-router'
+import { isLink } from '../utils/isLink'
+import { pick } from '../utils/object'
+import { toPascalCase } from '../utils/stringUtils'
 
 export const useBLinkHelper = <
   T extends Record<string, unknown>,
