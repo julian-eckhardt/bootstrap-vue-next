@@ -105,7 +105,7 @@ export const useBLinkTagResolver = ({
 
   const isNuxtLink = computed(
     // @ts-expect-error we're doing an explicit check for Nuxt, so we can safely ignore this
-    () => typeof instance?.appContext?.app?.$nuxt !== 'undefined'
+    () => typeof instance?.appContext?.app?.config?.globalProperties?.$nuxt !== 'undefined'
   )
   const isRouterLink = computed(() => routerName.value === 'RouterLink')
 
