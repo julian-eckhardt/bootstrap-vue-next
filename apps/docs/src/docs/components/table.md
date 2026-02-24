@@ -346,12 +346,6 @@ following custom CSS:
 
 <<< DEMO ./demo/TableBusy.vue
 
-#### busy-loading-text
-
-You can also use the `busy-loading-text` prop to display a custom loading message with a spinner when the table is busy, without needing to provide a custom slot:
-
-<<< DEMO ./demo/TableBusyLoadingText.vue
-
 Also see the [Using Item Provider Functions](#using-items-provider-functions) below for additional
 information on the `busy` state.
 
@@ -931,11 +925,21 @@ Setting the prop `filter` to null or an empty string will clear local items filt
 ## Using items provider functions
 
 As mentioned under the [Items](#items-record-data) prop section, it is possible to use a function to
-provide the row data (items) by specifying a function reference via the `provider` prop and leaving
-the `items` prop undefined.
+provide the row data (items) by specifying a function reference via the `provider` prop.
+
+When using a provider, the fetched items are written back through `v-model:items`. This means you
+can use `v-model:items` to access the items returned by the provider:
+
+```html
+<BTable v-model:items="myItems" :provider="myProvider" :fields="fields" />
+```
+
+If you do not need to access the provider's fetched items from the parent component, you can
+simply omit the `v-model:items` binding. When not using a provider, you can use a one-way
+binding (`:items="myItems"`) as before.
 
 ::: info NOTE
-If both the `provider` and `items` props are set, the `provider` will be used and `items` will be ignored.
+If both the `provider` and `items` props are set, the `provider` will update the `items` value when it fetches new data.
 :::
 
 The provider function is called with the following signature:

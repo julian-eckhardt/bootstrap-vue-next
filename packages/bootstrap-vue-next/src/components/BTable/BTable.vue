@@ -76,19 +76,18 @@
       </slot>
     </template>
     <template #custom-body="scope">
-      <BTr v-if="busyModel" class="b-table-busy-slot" :class="getBusyRowClasses">
+      <BTr
+        v-if="busyModel && slots['table-busy']"
+        class="b-table-busy-slot"
+        :class="getBusyRowClasses"
+      >
         <BTd :colspan="scope.fields.length">
-          <slot name="table-busy">
-            <div class="text-center my-2">
-              <BSpinner small class="align-middle me-2" />
-              <strong>{{ props.busyLoadingText }}</strong>
-            </div>
-          </slot>
+          <slot name="table-busy" />
         </BTd>
       </BTr>
 
       <BTr
-        v-else-if="props.showEmpty === true && computedItems.length === 0"
+        v-else-if="!busyModel && props.showEmpty === true && computedItems.length === 0"
         class="b-table-empty-row"
       >
         <BTd :colspan="computedFields.length">
@@ -110,11 +109,10 @@
 
 <script setup lang="ts" generic="Item">
 import {useToNumber} from '@vueuse/core'
-import {computed, type ComputedRef, readonly, type Ref, toRef} from 'vue'
+import {computed, readonly, toRef} from 'vue'
 import BTableLite from './BTableLite.vue'
 import BTd from './BTd.vue'
 import BTr from './BTr.vue'
-import BSpinner from '../BSpinner/BSpinner.vue'
 import {
   type TableField,
   type TableFieldRaw,
@@ -138,7 +136,7 @@ import {
 import {useItemExpansion} from '../../composables/useTableLiteHelpers'
 
 const _props = withDefaults(
-  defineProps<Omit<BTableProps<Item>, 'sortBy' | 'busy' | 'selectedItems'>>(),
+  defineProps<Omit<BTableProps<Item>, 'sortBy' | 'busy' | 'selectedItems' | 'items'>>(),
   {
     noSortableIcon: false,
     sortIconLeft: false,
@@ -161,13 +159,11 @@ const _props = withDefaults(
     selectHead: true,
     selectMode: 'multi',
     selectionVariant: 'primary',
-    busyLoadingText: 'Loading...',
     currentPage: 1,
     sortCompare: undefined,
     debounce: 0,
     debounceMaxWait: Number.NaN,
     // BTableLite props
-    items: () => [],
     fields: () => [],
     // All others use defaults
     caption: undefined,
@@ -242,6 +238,9 @@ const expandedItems = defineModel<Exclude<BTableProps<Item>['expandedItems'], un
     default: () => [],
   }
 )
+const itemsModel = defineModel<Exclude<BTableProps<Item>['items'], undefined>>('items', {
+  default: () => [],
+})
 
 const computedId = useId(() => props.id)
 const perPageNumber = useToNumber(() => props.perPage, {method: 'parseInt'})
@@ -262,6 +261,7 @@ const sortController = useTableSort({
   multisort: () => props.multisort,
 })
 const providerController = useTableProvider({
+  items: itemsModel,
   events: {
     onFiltered: () => {
       emit('filtered', computedItems.value)
@@ -283,9 +283,7 @@ const providerController = useTableProvider({
   sortBy: sortByModel,
 })
 const expandedItemsController = useItemExpansion({
-  allItems: computed(() =>
-    providerController.usesProvider.value ? providerController.items.value : props.items
-  ) as ComputedRef<Item[]>,
+  allItems: itemsModel,
   primaryKey: toRef(() => props.primaryKey),
   expandedItems,
 })
@@ -298,7 +296,6 @@ const {
 } = useTableMapper({
   fields: () => props.fields,
   provider: {
-    items: providerController.items as Ref<Item[]>,
     noProviderFiltering: () => props.noProviderFiltering,
     noProviderPaging: () => props.noProviderPaging,
     noProviderSorting: () => props.noProviderSorting,
@@ -309,7 +306,7 @@ const {
       emit('change', v)
     },
   },
-  items: () => props.items,
+  items: itemsModel,
   pagination: {
     perPage: perPageNumber,
     currentPage: currentPageNumber,

@@ -1511,6 +1511,73 @@ describe('provider debouncing', () => {
   })
 })
 
+describe('v-model:items with provider', () => {
+  it('updates v-model:items when provider returns data', async () => {
+    const providerItems: TableItem<SimplePerson>[] = [
+      {age: 30, first_name: 'John'},
+      {age: 25, first_name: 'Jane'},
+    ]
+
+    const provider = vi.fn(async () => providerItems)
+
+    const wrapper = mount(BTable, {
+      props: {
+        provider,
+        'fields': simpleFields,
+        'onUpdate:items': (val: unknown) => wrapper.setProps({items: val as typeof providerItems}),
+      },
+    })
+
+    // Wait for initial mount call to complete
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // v-model:items should be updated with provider results
+    expect(wrapper.props('items')).toEqual(providerItems)
+  })
+
+  it('emits update:items when provider fetches new data on filter change', async () => {
+    const initialItems: TableItem<SimplePerson>[] = [{age: 30, first_name: 'John'}]
+    const filteredItems: TableItem<SimplePerson>[] = [{age: 25, first_name: 'Jane'}]
+
+    let callCount = 0
+    const provider = vi.fn(async () => {
+      callCount++
+      return callCount === 1 ? initialItems : filteredItems
+    })
+
+    const wrapper = mount(BTable, {
+      props: {
+        provider,
+        'fields': simpleFields,
+        'onUpdate:items': (val: unknown) => wrapper.setProps({items: val as typeof initialItems}),
+      },
+    })
+
+    // Wait for initial provider call
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(wrapper.props('items')).toEqual(initialItems)
+
+    // Trigger filter change to call provider again
+    await wrapper.setProps({filter: 'test'})
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // v-model:items should now have the filtered data
+    expect(wrapper.props('items')).toEqual(filteredItems)
+  })
+
+  it('works with one-way binding :items when not using provider', async () => {
+    const wrapper = mount(BTable, {
+      props: {
+        items: simpleItems,
+        fields: simpleFields,
+      },
+    })
+
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBe(simpleItems.length)
+  })
+})
+
 describe('event emissions', () => {
   const items = [
     {id: 1, first_name: 'John', age: 30},
@@ -1724,21 +1791,8 @@ describe('BTable styling props', () => {
   })
 })
 
-describe('BTable busyLoadingText', () => {
-  it('displays busyLoadingText when busy and no slot provided', async () => {
-    const wrapper = mount(BTable, {
-      props: {
-        items: [{name: 'test'}],
-        fields: ['name'],
-        busy: true,
-        busyLoadingText: 'Custom loading message...',
-      },
-    })
-    await nextTick()
-    expect(wrapper.text()).toContain('Custom loading message...')
-  })
-
-  it('uses default busyLoadingText when busy and none specified', async () => {
+describe('BTable busy state', () => {
+  it('shows items when busy and no table-busy slot specified', async () => {
     const wrapper = mount(BTable, {
       props: {
         items: [{name: 'test'}],
@@ -1747,16 +1801,15 @@ describe('BTable busyLoadingText', () => {
       },
     })
     await nextTick()
-    expect(wrapper.text()).toContain('Loading...')
+    expect(wrapper.text()).toContain('test')
   })
 
-  it('prefers table-busy slot over busyLoadingText when both provided', async () => {
+  it('shows table-busy slot content instead of items when busy and slot provided', async () => {
     const wrapper = mount(BTable, {
       props: {
         items: [{name: 'test'}],
         fields: ['name'],
         busy: true,
-        busyLoadingText: 'This should not appear',
       },
       slots: {
         'table-busy': '<div>Custom slot content</div>',
@@ -1764,19 +1817,23 @@ describe('BTable busyLoadingText', () => {
     })
     await nextTick()
     expect(wrapper.text()).toContain('Custom slot content')
-    expect(wrapper.text()).not.toContain('This should not appear')
+    expect(wrapper.text()).not.toContain('test')
   })
 
-  it('does not display busyLoadingText when not busy', () => {
+  it('does not show table-busy slot when not busy', async () => {
     const wrapper = mount(BTable, {
       props: {
         items: [{name: 'test'}],
         fields: ['name'],
         busy: false,
-        busyLoadingText: 'Should not appear',
+      },
+      slots: {
+        'table-busy': '<div>Custom slot content</div>',
       },
     })
-    expect(wrapper.text()).not.toContain('Should not appear')
+    await nextTick()
+    expect(wrapper.text()).not.toContain('Custom slot content')
+    expect(wrapper.text()).toContain('test')
   })
 
   it('filters correctly with filterFunction when filter prop is empty string', async () => {
